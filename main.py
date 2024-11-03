@@ -21,11 +21,17 @@ font = pygame.font.Font(None, 36)
 fontTitle = pygame.font.Font(None, 72)
 
 # Función para cargar y redimensionar imágenes
-def load_image(path, size=None):
+def load_image(path, size=None, grayscale=False):
     try:
         image = pygame.image.load(path).convert_alpha()
         if size:
             image = pygame.transform.scale(image, size)
+        if grayscale:
+            image = image.copy()
+            arr = pygame.surfarray.pixels3d(image)
+            avg = (arr[:, :, 0] + arr[:, :, 1] + arr[:, :, 2]) // 3
+            arr[:, :, :] = avg[:, :, None]
+            del arr
         return image
     except pygame.error as e:
         print(f"Error al cargar la imagen {path}: {e}")
@@ -36,6 +42,7 @@ player_image = load_image('assets/player.png', (80, 80))
 npc_image = load_image('assets/npc.png', (40, 40))
 plaza_image = load_image('assets/plaza.png', (150, 150))
 monasterio_image = load_image('assets/monasterio.png', (150, 150))
+monasterio_image_gray = load_image('assets/monasterio.png', (150, 150), grayscale=True)  # Monasterio en blanco y negro
 mirador_image = load_image('assets/mirador.png', (150, 150))
 background_image = load_image('assets/arequipa_mp_real.PNG', (SCREEN_WIDTH, SCREEN_HEIGHT))
 menu_image = load_image('assets/menu.jpg', (SCREEN_WIDTH, SCREEN_HEIGHT))
@@ -49,6 +56,9 @@ objeto4_image = load_image('assets/objeto4.jpg', (70, 70))
 
 # Cargar sonido de recolección de objetos
 pickup_sound = pygame.mixer.Sound('assets/point.wav')
+
+# Bandera para controlar si el Monasterio ha sido completado
+monasterio_completado = False
 
 # Clase para el jugador
 class Player(pygame.sprite.Sprite):
@@ -197,6 +207,7 @@ def puzzle(location):
 
 # Función de segundo nivel
 def level_two():
+    global monasterio_completado  # Modificar la variable global para indicar que el nivel fue completado
     start_time = pygame.time.get_ticks()
     remaining_time = 15
     objects_remaining = 4
@@ -246,7 +257,7 @@ def level_two():
 
         # Comprobar si el jugador ha ganado o si el tiempo ha terminado
         if objects_remaining == 0:
-            print("¡Nivel completado!")
+            monasterio_completado = True  # Marcar el monasterio como completado
             return  # Volver al primer nivel si se completan todos los objetos
         elif remaining_time == 0:
             game_over()
@@ -279,11 +290,16 @@ for _ in range(5):
     npcs.add(npc)
 
 mirador = PointOfInterest(100, 100, mirador_image)
-monasterio = PointOfInterest(400, 300, monasterio_image)
+monasterio = PointOfInterest(400, 300, monasterio_image if not monasterio_completado else monasterio_image_gray)
 plaza = PointOfInterest(700, 500, plaza_image)
 
-all_sprites.add(mirador, monasterio, plaza)
-points_of_interest.add(mirador, monasterio, plaza)
+all_sprites.add(mirador, plaza)
+points_of_interest.add(mirador, plaza)
+
+# Añadir el Monasterio si no está completado
+if not monasterio_completado:
+    all_sprites.add(monasterio)
+    points_of_interest.add(monasterio)
 
 def reset_game():
     player.reset_position()
@@ -309,11 +325,15 @@ while running:
 
     all_sprites.draw(screen)
 
+    # Actualizar monasterio en blanco y negro si está completado
+    if monasterio_completado:
+        screen.blit(monasterio_image_gray, (monasterio.rect.x, monasterio.rect.y))
+
     collided_point = pygame.sprite.spritecollideany(player, points_of_interest)
     if collided_point:
-        if collided_point == monasterio:
-            level_two()  # Iniciar el segundo nivel
-        else:
+        if collided_point == monasterio and not monasterio_completado:
+            level_two()  # Iniciar el segundo nivel solo si no está completado
+        elif collided_point != monasterio:
             puzzle_location = "la Plaza de Armas" if collided_point == plaza else "el Mirador"
             puzzle(puzzle_location)
 
