@@ -43,7 +43,7 @@ npc_image = load_image('assets/npc.png', NPC_SIZE)
 plaza_image = load_image('assets/plaza.png', POINT_SIZE)
 monasterio_image = load_image('assets/monasterio.png', POINT_SIZE)
 mirador_image = load_image('assets/mirador.png', POINT_SIZE)
-background_image = load_image('assets/arequipa_bg.jpg', BG_SIZE)
+background_image = load_image('assets/arequipa_mp_real.PNG', BG_SIZE)
 menu_image = load_image('assets/menu.jpg', BG_SIZE)
 
 # Verificar si las imágenes se cargaron correctamente
@@ -58,8 +58,13 @@ class Player(pygame.sprite.Sprite):
         super().__init__()
         self.image = player_image
         self.rect = self.image.get_rect()
-        self.rect.center = (400, 300)
+        # Posicionar el jugador en la esquina superior derecha al iniciar el juego
+        self.rect.topright = (SCREEN_WIDTH - 10, 10)
         self.speed = 3
+
+    def reset_position(self):
+        # Reposicionar el jugador en la esquina superior derecha al reiniciar el juego
+        self.rect.topright = (SCREEN_WIDTH - 10, 10)
 
     def update(self, pressed_keys):
         if pressed_keys[pygame.K_LEFT]:
@@ -77,6 +82,9 @@ class NPC(pygame.sprite.Sprite):
         super().__init__()
         self.image = npc_image
         self.rect = self.image.get_rect()
+        self.reset_position()
+
+    def reset_position(self):
         self.rect.x = random.randint(0, SCREEN_WIDTH - self.rect.width)
         self.rect.y = random.randint(0, SCREEN_HEIGHT - self.rect.height)
         self.speed = random.randint(1, 3)
@@ -102,17 +110,15 @@ class PointOfInterest(pygame.sprite.Sprite):
 
 # Función para mostrar el menú
 def show_menu():
-    screen.blit(menu_image, (0, 0))  # Dibujar el fondo en el menú
-    title = fontTitle.render("Aventura en Arequipa", True, WHITE)  # Título en blanco
+    screen.blit(menu_image, (0, 0))
+    title = fontTitle.render("Aventura en Arequipa", True, WHITE)
     screen.blit(title, (150, 150))
 
-    # Definir botones
-    start_button = pygame.Rect(250, 250, 300, 50)  # Botón de iniciar
-    quit_button = pygame.Rect(250, 320, 300, 50)   # Botón de salir
+    start_button = pygame.Rect(250, 250, 300, 50)
+    quit_button = pygame.Rect(250, 320, 300, 50)
 
-    # Dibujar botones
-    pygame.draw.rect(screen, GREEN, start_button)  # Botón de iniciar
-    pygame.draw.rect(screen, RED, quit_button)      # Botón de salir
+    pygame.draw.rect(screen, GREEN, start_button)
+    pygame.draw.rect(screen, RED, quit_button)
 
     start_text = font.render("Iniciar Juego", True, WHITE)
     quit_text = font.render("Salir", True, WHITE)
@@ -127,22 +133,41 @@ def show_menu():
             if event.type == pygame.QUIT:
                 pygame.quit()
                 exit()
-            if event.type == pygame.KEYDOWN:
-                if event.key == pygame.K_1:
-                    in_menu = False
-                elif event.key == pygame.K_2:
-                    pygame.quit()
-                    exit()
             if event.type == pygame.MOUSEBUTTONDOWN:
                 if start_button.collidepoint(event.pos):
                     in_menu = False
+                    reset_game()  # Reiniciar posiciones al iniciar el juego
                 elif quit_button.collidepoint(event.pos):
                     pygame.quit()
                     exit()
 
+# Función para mostrar la pantalla de Game Over
+def game_over():
+    screen.fill(BLACK)
+    game_over_text = fontTitle.render("Game Over", True, RED)
+    screen.blit(game_over_text, (250, 200))
+
+    restart_button = pygame.Rect(250, 300, 300, 50)
+    pygame.draw.rect(screen, GREEN, restart_button)
+    restart_text = font.render("Volver al Inicio", True, WHITE)
+    screen.blit(restart_text, (restart_button.x + 60, restart_button.y + 10))
+
+    pygame.display.flip()
+
+    waiting = True
+    while waiting:
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                pygame.quit()
+                exit()
+            if event.type == pygame.MOUSEBUTTONDOWN:
+                if restart_button.collidepoint(event.pos):
+                    show_menu()
+                    waiting = False
+
 # Función de puzzle
 def puzzle(location):
-    screen.fill(BLACK)  # Cambia el color del fondo durante el puzzle
+    screen.fill(BLACK)
     puzzle_text = font.render(f"Resuelve el puzzle de {location}", True, WHITE)
     screen.blit(puzzle_text, (150, 250))
     pygame.display.flip()
@@ -162,13 +187,23 @@ for _ in range(5):
     npcs.add(npc)
 
 # Crear puntos de interés
+mirador = PointOfInterest(100, 100, mirador_image)
+
+# Monasterio de Santa Catalina un poco más abajo, casi en la mitad de la imagen
+monasterio = PointOfInterest(400, 300, monasterio_image)
+
+# Plaza de Armas (manteniendo la posición original en la esquina inferior derecha)
 plaza = PointOfInterest(700, 500, plaza_image)
-monasterio = PointOfInterest(400, 150, monasterio_image)
-mirador = PointOfInterest(100, 400, mirador_image)
 
 # Agregar puntos de interés a los grupos
-all_sprites.add(plaza, monasterio, mirador)
-points_of_interest.add(plaza, monasterio, mirador)
+all_sprites.add(mirador, monasterio, plaza)
+points_of_interest.add(mirador, monasterio, plaza)
+
+# Función para reiniciar posiciones de jugador y NPCs
+def reset_game():
+    player.reset_position()
+    for npc in npcs:
+        npc.reset_position()
 
 # Ciclo del menú
 show_menu()
@@ -179,7 +214,7 @@ clock = pygame.time.Clock()
 
 while running:
     clock.tick(60)
-    screen.blit(background_image, (0, 0))  # Dibujar el fondo
+    screen.blit(background_image, (0, 0))
 
     for event in pygame.event.get():
         if event.type == pygame.QUIT:
@@ -191,11 +226,15 @@ while running:
 
     all_sprites.draw(screen)
 
-    # Verificar si el jugador ha llegado a un punto de interés
+    # Verificar colisión con puntos de interés
     collided_point = pygame.sprite.spritecollideany(player, points_of_interest)
     if collided_point:
         puzzle_location = "la Plaza de Armas" if collided_point == plaza else "el Monasterio" if collided_point == monasterio else "el Mirador"
         puzzle(puzzle_location)
+
+    # Verificar colisión con NPCs
+    if pygame.sprite.spritecollideany(player, npcs):
+        game_over()
 
     pygame.display.flip()
 
