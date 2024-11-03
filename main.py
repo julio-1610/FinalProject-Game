@@ -31,26 +31,24 @@ def load_image(path, size=None):
         print(f"Error al cargar la imagen {path}: {e}")
         return None
 
-# Definir los tamaños deseados para las imágenes
-PLAYER_SIZE = (80, 80)
-NPC_SIZE = (40, 40)
-POINT_SIZE = (150, 150)
-BG_SIZE = (SCREEN_WIDTH, SCREEN_HEIGHT)
-
 # Cargar imágenes
-player_image = load_image('assets/player.png', PLAYER_SIZE)
-npc_image = load_image('assets/npc.png', NPC_SIZE)
-plaza_image = load_image('assets/plaza.png', POINT_SIZE)
-monasterio_image = load_image('assets/monasterio.png', POINT_SIZE)
-mirador_image = load_image('assets/mirador.png', POINT_SIZE)
-background_image = load_image('assets/arequipa_mp_real.PNG', BG_SIZE)
-menu_image = load_image('assets/menu.jpg', BG_SIZE)
+player_image = load_image('assets/player.png', (80, 80))
+npc_image = load_image('assets/npc.png', (40, 40))
+plaza_image = load_image('assets/plaza.png', (150, 150))
+monasterio_image = load_image('assets/monasterio.png', (150, 150))
+mirador_image = load_image('assets/mirador.png', (150, 150))
+background_image = load_image('assets/arequipa_mp_real.PNG', (SCREEN_WIDTH, SCREEN_HEIGHT))
+menu_image = load_image('assets/menu.jpg', (SCREEN_WIDTH, SCREEN_HEIGHT))
+monasterio_bg_image = load_image('assets/escenario_stc.jpg', (SCREEN_WIDTH, SCREEN_HEIGHT))
 
-# Verificar si las imágenes se cargaron correctamente
-if not player_image or not npc_image or not plaza_image or not background_image or not monasterio_image or not mirador_image:
-    print("Error al cargar las imágenes, verifica las rutas.")
-    pygame.quit()
-    exit()
+# Cargar imágenes de objetos en un tamaño más grande
+objeto1_image = load_image('assets/objeto1.jpg', (70, 70))
+objeto2_image = load_image('assets/objeto2.jpg', (70, 70))
+objeto3_image = load_image('assets/objeto3.jpg', (70, 70))
+objeto4_image = load_image('assets/objeto4.jpg', (70, 70))
+
+# Cargar sonido de recolección de objetos
+pickup_sound = pygame.mixer.Sound('assets/point.wav')
 
 # Clase para el jugador
 class Player(pygame.sprite.Sprite):
@@ -58,12 +56,10 @@ class Player(pygame.sprite.Sprite):
         super().__init__()
         self.image = player_image
         self.rect = self.image.get_rect()
-        # Posicionar el jugador en la esquina superior derecha al iniciar el juego
         self.rect.topright = (SCREEN_WIDTH - 10, 10)
         self.speed = 3
 
     def reset_position(self):
-        # Reposicionar el jugador en la esquina superior derecha al reiniciar el juego
         self.rect.topright = (SCREEN_WIDTH - 10, 10)
 
     def update(self, pressed_keys):
@@ -76,8 +72,8 @@ class Player(pygame.sprite.Sprite):
         if pressed_keys[pygame.K_DOWN]:
             self.rect.y += self.speed
 
-# Clase para NPCs
-class NPC(pygame.sprite.Sprite):
+# Clase para NPCs con movimiento "wandering" en el primer nivel
+class WanderingNPC(pygame.sprite.Sprite):
     def __init__(self):
         super().__init__()
         self.image = npc_image
@@ -99,6 +95,32 @@ class NPC(pygame.sprite.Sprite):
             self.direction.x *= -1
         if self.rect.top < 0 or self.rect.bottom > SCREEN_HEIGHT:
             self.direction.y *= -1
+
+# Clase para el NPC del segundo nivel que sigue waypoints
+class WaypointNPC(pygame.sprite.Sprite):
+    def __init__(self):
+        super().__init__()
+        self.image = npc_image
+        self.rect = self.image.get_rect()
+        self.rect.topleft = (500, 100)
+        self.speed = 5  # Mayor velocidad en el segundo nivel
+        self.waypoints = []
+        self.current_waypoint = 0
+
+    def set_waypoints(self, waypoints):
+        self.waypoints = waypoints
+
+    def update(self):
+        if not self.waypoints:
+            return
+        target_x, target_y = self.waypoints[self.current_waypoint]
+        npc_direction = pygame.math.Vector2(target_x - self.rect.x, target_y - self.rect.y)
+        if npc_direction.length() != 0:
+            npc_direction = npc_direction.normalize()
+        self.rect.x += npc_direction.x * self.speed
+        self.rect.y += npc_direction.y * self.speed
+        if self.rect.collidepoint(target_x, target_y):
+            self.current_waypoint = (self.current_waypoint + 1) % len(self.waypoints)
 
 # Clase para los puntos de interés
 class PointOfInterest(pygame.sprite.Sprite):
@@ -136,7 +158,7 @@ def show_menu():
             if event.type == pygame.MOUSEBUTTONDOWN:
                 if start_button.collidepoint(event.pos):
                     in_menu = False
-                    reset_game()  # Reiniciar posiciones al iniciar el juego
+                    reset_game()
                 elif quit_button.collidepoint(event.pos):
                     pygame.quit()
                     exit()
@@ -173,42 +195,103 @@ def puzzle(location):
     pygame.display.flip()
     pygame.time.delay(3000)
 
-# Inicializar grupos de sprites
+# Función de segundo nivel
+def level_two():
+    start_time = pygame.time.get_ticks()
+    remaining_time = 15
+    objects_remaining = 4
+
+    player.rect.topleft = (50, 500)
+
+    # Crear NPC de waypoints y establecer sus puntos
+    waypoint_npc = WaypointNPC()
+    waypoint_npc.set_waypoints([(600, 50), (200, 100), (300, 200), (100, 400)])
+
+    # Crear objetos más grandes en las posiciones deseadas
+    objeto1 = PointOfInterest(100, 400, objeto1_image)
+    objeto2 = PointOfInterest(300, 200, objeto2_image)
+    objeto3 = PointOfInterest(200, 100, objeto3_image)
+    objeto4 = PointOfInterest(600, 50, objeto4_image)
+
+    objects = pygame.sprite.Group()
+    objects.add(objeto1, objeto2, objeto3, objeto4)
+
+    running = True
+    while running:
+        screen.blit(monasterio_bg_image, (0, 0))
+
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                pygame.quit()
+                exit()
+
+        keys = pygame.key.get_pressed()
+        player.update(keys)
+        waypoint_npc.update()  # Actualizar el movimiento del NPC de waypoints
+
+        # Verificar colisión con el NPC
+        if pygame.sprite.collide_rect(player, waypoint_npc):
+            game_over()
+            return  # Salir de level_two y volver al menú principal en caso de Game Over
+
+        # Verificar colisión con objetos
+        collected_object = pygame.sprite.spritecollideany(player, objects)
+        if collected_object:
+            collected_object.kill()
+            pickup_sound.play()
+            objects_remaining -= 1
+
+        elapsed_time = (pygame.time.get_ticks() - start_time) / 1000
+        remaining_time = max(0, 15 - int(elapsed_time))
+
+        # Comprobar si el jugador ha ganado o si el tiempo ha terminado
+        if objects_remaining == 0:
+            print("¡Nivel completado!")
+            return  # Volver al primer nivel si se completan todos los objetos
+        elif remaining_time == 0:
+            game_over()
+            return  # Mostrar Game Over si el tiempo se acaba
+
+        objects.draw(screen)
+        screen.blit(player.image, player.rect)
+        screen.blit(waypoint_npc.image, waypoint_npc.rect)
+
+        time_text = font.render(f"Contador: {remaining_time} segundos", True, GREEN)
+        objects_text = font.render(f"Objetos Restantes: {objects_remaining}", True, GREEN)
+        screen.blit(time_text, (SCREEN_WIDTH - 200, 20))
+        screen.blit(objects_text, (20, 20))
+
+        pygame.display.flip()
+        clock.tick(60)
+
+# Inicializar el resto del juego (jugador, NPCs, etc.)
 all_sprites = pygame.sprite.Group()
 npcs = pygame.sprite.Group()
 points_of_interest = pygame.sprite.Group()
 
-# Crear jugador y NPCs
 player = Player()
 all_sprites.add(player)
+
+# Crear 5 NPCs para el primer nivel
 for _ in range(5):
-    npc = NPC()
+    npc = WanderingNPC()
     all_sprites.add(npc)
     npcs.add(npc)
 
-# Crear puntos de interés
 mirador = PointOfInterest(100, 100, mirador_image)
-
-# Monasterio de Santa Catalina un poco más abajo, casi en la mitad de la imagen
 monasterio = PointOfInterest(400, 300, monasterio_image)
-
-# Plaza de Armas (manteniendo la posición original en la esquina inferior derecha)
 plaza = PointOfInterest(700, 500, plaza_image)
 
-# Agregar puntos de interés a los grupos
 all_sprites.add(mirador, monasterio, plaza)
 points_of_interest.add(mirador, monasterio, plaza)
 
-# Función para reiniciar posiciones de jugador y NPCs
 def reset_game():
     player.reset_position()
     for npc in npcs:
         npc.reset_position()
 
-# Ciclo del menú
 show_menu()
 
-# Ciclo principal del juego
 running = True
 clock = pygame.time.Clock()
 
@@ -226,13 +309,14 @@ while running:
 
     all_sprites.draw(screen)
 
-    # Verificar colisión con puntos de interés
     collided_point = pygame.sprite.spritecollideany(player, points_of_interest)
     if collided_point:
-        puzzle_location = "la Plaza de Armas" if collided_point == plaza else "el Monasterio" if collided_point == monasterio else "el Mirador"
-        puzzle(puzzle_location)
+        if collided_point == monasterio:
+            level_two()  # Iniciar el segundo nivel
+        else:
+            puzzle_location = "la Plaza de Armas" if collided_point == plaza else "el Mirador"
+            puzzle(puzzle_location)
 
-    # Verificar colisión con NPCs
     if pygame.sprite.spritecollideany(player, npcs):
         game_over()
 
