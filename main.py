@@ -3,11 +3,13 @@ import random
 import cv2 as cv
 import numpy as np
 import os
+from flocking import main  # Asegúrate de importar lo necesario desde flocking.py
+
 # Inicializar Pygame
 pygame.init()
 
 # Definir el tamaño de la pantalla
-SCREEN_WIDTH = 800
+SCREEN_WIDTH = 1000
 SCREEN_HEIGHT = 600
 screen = pygame.display.set_mode((SCREEN_WIDTH, SCREEN_HEIGHT))
 pygame.display.set_caption("Aventura en Arequipa")
@@ -17,6 +19,7 @@ WHITE = (255, 255, 255)
 BLACK = (0, 0, 0)
 GREEN = (0, 255, 0)
 RED = (255, 0, 0)
+BLUE = (50, 50, 150)
 plaza_completado = False
 # Fuentes
 font = pygame.font.Font(None, 36)
@@ -47,6 +50,7 @@ plaza_image = load_image('assets/plaza.png', (150, 150))
 monasterio_image = load_image('assets/monasterio.png', (150, 150))
 monasterio_image_gray = load_image('assets/monasterio.png', (150, 150), grayscale=True)  # Monasterio en blanco y negro
 mirador_image = load_image('assets/mirador.png', (150, 150))
+mirador_image_gray = load_image('assets/mirador.png', (150, 150), grayscale=True)
 background_image = load_image('assets/mapa_sin etiqueta.png', (SCREEN_WIDTH, SCREEN_HEIGHT))
 menu_image = load_image('assets/menu.jpg', (SCREEN_WIDTH, SCREEN_HEIGHT))
 monasterio_bg_image = load_image('assets/escenario_stc.jpg', (SCREEN_WIDTH, SCREEN_HEIGHT))
@@ -62,6 +66,7 @@ pickup_sound = pygame.mixer.Sound('assets/point.wav')
 
 # Bandera para controlar si el Monasterio ha sido completado
 monasterio_completado = False
+mirador_completado = False
 
 # Clase para el jugador
 class Player(pygame.sprite.Sprite):
@@ -394,7 +399,7 @@ def level_two():
             collected_object.kill()
             pickup_sound.play()
             objects_remaining -= 1
-    
+
         elapsed_time = (pygame.time.get_ticks() - start_time) / 1000
         remaining_time = max(0, 15 - int(elapsed_time))
 
@@ -443,6 +448,11 @@ points_of_interest.add(mirador, plaza)
 if not monasterio_completado:
     all_sprites.add(monasterio)
     points_of_interest.add(monasterio)
+# Añadir el Monasterio si no está completado
+
+if not mirador_completado:
+    all_sprites.add(mirador)
+    points_of_interest.add(mirador)
 
 def reset_game():
     player.reset_position()
@@ -467,26 +477,41 @@ while running:
     npcs.update()
 
     all_sprites.draw(screen)
+    # Mostrar la plaza en escala de grises si no se ha completado Monasterio y Mirador
+    if monasterio_completado and mirador_completado:
+        # Si Monasterio y Mirador están completados, mostrar la Plaza en color y activarla para colisiones
+        screen.blit(plaza_image, (plaza.rect.x, plaza.rect.y))
+        plaza.active = True  # Activar la Plaza para permitir la colisión
+    else:
+        # Si no, mostrar la Plaza en escala de grises y desactivarla para colisiones
+        plaza_image_gray = load_image('assets/plaza.png', (150, 150), grayscale=True)
+        screen.blit(plaza_image_gray, (plaza.rect.x, plaza.rect.y))
+        plaza.active = False  # Desactivar la Plaza para evitar colisiones
 
     # Actualizar monasterio en blanco y negro si está completado
     if monasterio_completado:
         screen.blit(monasterio_image_gray, (monasterio.rect.x, monasterio.rect.y))
+    if mirador_completado:
+        screen.blit(mirador_image_gray, (mirador.rect.x, mirador.rect.y))
 
     collided_point = pygame.sprite.spritecollideany(player, points_of_interest)
     if collided_point:
-        if collided_point == plaza and not plaza_completado:
+        if collided_point == monasterio and not monasterio_completado:
+            level_two()  # Iniciar el segundo nivel solo si no está completado
+        elif collided_point == mirador and not mirador_completado:
+            minijuego_completado = main()  # Ejecuta el minijuego
+            if minijuego_completado:
+                mirador_completado = True  # Marca el mirador como completado
+            else:
+                # El jugador perdió, actualiza la lógica (mirador en gris)
+                mirador_completado = False
+        elif collided_point == plaza and plaza.active and not plaza_completado:
+            # Solo permitir jugar la Plaza si Monasterio y Mirador están completos y la Plaza está activada
             plaza_completado = plaza_ra()  # Ejecutar nivel de Plaza
             if plaza_completado:  # Si completó el nivel
                 plaza.image = load_image('assets/plaza_negro.png', (150, 150))  # Cambiar imagen a negro
                 points_of_interest.remove(plaza)  # Eliminar Plaza de puntos activos
-            continue  # Regresar al mapa
-
-        elif collided_point == mirador:
-            puzzle("el Mirador")
-
-        elif collided_point == monasterio and not monasterio_completado:
-            level_two()
-
+            continue
 
     if pygame.sprite.spritecollideany(player, npcs):
         game_over()
