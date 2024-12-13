@@ -89,6 +89,15 @@ def plaza_ra():
         else:
             cooldown_active = False
 
+        # Agregar instrucciones en el marco
+        if sheet_corners is None:  # Si no se detecta una hoja
+            cv.putText(frame, "Use una hoja en blanco", (20, 50), cv.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 0), 2,
+                       cv.LINE_AA)
+        else:  # Si ya se detectó una hoja
+            cv.putText(frame, "Arrastre su mano para pasar de imagen", (20, 50), cv.FONT_HERSHEY_SIMPLEX, 1,
+                       (0, 255, 0), 2, cv.LINE_AA)
+
+        # Mostrar el marco actualizado
         cv.imshow("AR Plaza", frame)
 
         # Detectar la tecla 'Esc' para salir de la cámara sin cerrar el juego
@@ -96,7 +105,3 @@ def plaza_ra():
             cap.release()
             cv.destroyAllWindows()
             return True  # Indicar que el nivel terminó correctamente
-
-    cap.release()
-    cv.destroyAllWindows()
-    return True  # Indicar que el nivel se completó correctamente
