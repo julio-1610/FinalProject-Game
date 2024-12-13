@@ -1,11 +1,12 @@
 import pygame
 import random
+from flocking import main  # Asegúrate de importar lo necesario desde flocking.py
 
 # Inicializar Pygame
 pygame.init()
 
 # Definir el tamaño de la pantalla
-SCREEN_WIDTH = 800
+SCREEN_WIDTH = 1000
 SCREEN_HEIGHT = 600
 screen = pygame.display.set_mode((SCREEN_WIDTH, SCREEN_HEIGHT))
 pygame.display.set_caption("Aventura en Arequipa")
@@ -15,7 +16,7 @@ WHITE = (255, 255, 255)
 BLACK = (0, 0, 0)
 GREEN = (0, 255, 0)
 RED = (255, 0, 0)
-
+BLUE = (50, 50, 150)
 # Fuentes
 font = pygame.font.Font(None, 36)
 fontTitle = pygame.font.Font(None, 72)
@@ -44,6 +45,7 @@ plaza_image = load_image('assets/plaza.png', (150, 150))
 monasterio_image = load_image('assets/monasterio.png', (150, 150))
 monasterio_image_gray = load_image('assets/monasterio.png', (150, 150), grayscale=True)  # Monasterio en blanco y negro
 mirador_image = load_image('assets/mirador.png', (150, 150))
+mirador_image_gray = load_image('assets/mirador.png', (150, 150), grayscale=True)
 background_image = load_image('assets/arequipa_mp_real.PNG', (SCREEN_WIDTH, SCREEN_HEIGHT))
 menu_image = load_image('assets/menu.jpg', (SCREEN_WIDTH, SCREEN_HEIGHT))
 monasterio_bg_image = load_image('assets/escenario_stc.jpg', (SCREEN_WIDTH, SCREEN_HEIGHT))
@@ -59,6 +61,7 @@ pickup_sound = pygame.mixer.Sound('assets/point.wav')
 
 # Bandera para controlar si el Monasterio ha sido completado
 monasterio_completado = False
+mirador_completado = False
 
 # Clase para el jugador
 class Player(pygame.sprite.Sprite):
@@ -275,6 +278,9 @@ def level_two():
         pygame.display.flip()
         clock.tick(60)
 
+
+
+
 # Inicializar el resto del juego (jugador, NPCs, etc.)
 all_sprites = pygame.sprite.Group()
 npcs = pygame.sprite.Group()
@@ -300,6 +306,11 @@ points_of_interest.add(mirador, plaza)
 if not monasterio_completado:
     all_sprites.add(monasterio)
     points_of_interest.add(monasterio)
+# Añadir el Monasterio si no está completado
+
+if not mirador_completado:
+    all_sprites.add(mirador)
+    points_of_interest.add(mirador)
 
 def reset_game():
     player.reset_position()
@@ -328,14 +339,23 @@ while running:
     # Actualizar monasterio en blanco y negro si está completado
     if monasterio_completado:
         screen.blit(monasterio_image_gray, (monasterio.rect.x, monasterio.rect.y))
+    if mirador_completado:
+        screen.blit(mirador_image_gray, (mirador.rect.x, mirador.rect.y))
 
     collided_point = pygame.sprite.spritecollideany(player, points_of_interest)
     if collided_point:
-        if collided_point == monasterio and not monasterio_completado:
+        if collided_point == mirador and not mirador_completado:
+            minijuego_completado = main()  # Ejecuta el minijuego
+            if minijuego_completado:
+                mirador_completado = True  # Marca el mirador como completado
+            else:
+                # El jugador perdió, actualiza la lógica (mirador en gris)
+                mirador_completado = False  # O lo que necesites para manejar el estado
+        elif collided_point == monasterio and not monasterio_completado:
             level_two()  # Iniciar el segundo nivel solo si no está completado
-        elif collided_point != monasterio:
-            puzzle_location = "la Plaza de Armas" if collided_point == plaza else "el Mirador"
-            puzzle(puzzle_location)
+        else:
+            puzzle_location = "la Plaza de Armas"
+
 
     if pygame.sprite.spritecollideany(player, npcs):
         game_over()
