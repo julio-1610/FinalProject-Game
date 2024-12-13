@@ -1,5 +1,6 @@
 import pygame
 import random
+from plaza_ra import plaza_ra
 
 # Inicializar Pygame
 pygame.init()
@@ -15,7 +16,7 @@ WHITE = (255, 255, 255)
 BLACK = (0, 0, 0)
 GREEN = (0, 255, 0)
 RED = (255, 0, 0)
-
+plaza_completado = False
 # Fuentes
 font = pygame.font.Font(None, 36)
 fontTitle = pygame.font.Font(None, 72)
@@ -218,7 +219,7 @@ def level_two():
     waypoint_npc = WaypointNPC()
     waypoint_npc.set_waypoints([(600, 50), (200, 100), (300, 200), (100, 400)])
 
-    # Crear objetos más grandes en las posiciones deseadas
+    # Crear objetos en las posiciones deseadas
     objeto1 = PointOfInterest(100, 400, objeto1_image)
     objeto2 = PointOfInterest(300, 200, objeto2_image)
     objeto3 = PointOfInterest(200, 100, objeto3_image)
@@ -331,8 +332,17 @@ while running:
 
     collided_point = pygame.sprite.spritecollideany(player, points_of_interest)
     if collided_point:
-        if collided_point == monasterio and not monasterio_completado:
-            level_two()  # Iniciar el segundo nivel solo si no está completado
+        if collided_point == plaza and not plaza_completado:
+            plaza_completado = plaza_ra()  # Ejecutar nivel de Plaza
+            if plaza_completado:  # Si completó el nivel
+                plaza.image = load_image('assets/plaza_negro.png', (150, 150))  # Cambiar imagen a negro
+                points_of_interest.remove(plaza)  # Eliminar Plaza de puntos activos
+            continue  # Regresar al mapa
+
+        elif collided_point == mirador:
+            puzzle("el Mirador")
+        elif collided_point == monasterio and not monasterio_completado:
+            level_two()
         elif collided_point != monasterio:
             puzzle_location = "la Plaza de Armas" if collided_point == plaza else "el Mirador"
             puzzle(puzzle_location)
