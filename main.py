@@ -18,7 +18,8 @@ RED = (255, 0, 0)
 
 # Fuentes
 font = pygame.font.Font(None, 36)
-fontTitle = pygame.font.Font(None, 72)
+fontTitle = pygame.font.Font(pygame.font.match_font("Comic Sans MS"), 72)
+fontTitle.set_bold(True)
 
 # Función para cargar y redimensionar imágenes
 def load_image(path, size=None, grayscale=False):
@@ -44,7 +45,7 @@ plaza_image = load_image('assets/plaza.png', (150, 150))
 monasterio_image = load_image('assets/monasterio.png', (150, 150))
 monasterio_image_gray = load_image('assets/monasterio.png', (150, 150), grayscale=True)  # Monasterio en blanco y negro
 mirador_image = load_image('assets/mirador.png', (150, 150))
-background_image = load_image('assets/arequipa_mp_real.PNG', (SCREEN_WIDTH, SCREEN_HEIGHT))
+background_image = load_image('assets/mapa_sin etiqueta.png', (SCREEN_WIDTH, SCREEN_HEIGHT))
 menu_image = load_image('assets/menu.jpg', (SCREEN_WIDTH, SCREEN_HEIGHT))
 monasterio_bg_image = load_image('assets/escenario_stc.jpg', (SCREEN_WIDTH, SCREEN_HEIGHT))
 
@@ -73,13 +74,14 @@ class Player(pygame.sprite.Sprite):
         self.rect.topright = (SCREEN_WIDTH - 10, 10)
 
     def update(self, pressed_keys):
-        if pressed_keys[pygame.K_LEFT]:
+        # Movimiento con las teclas de flecha
+        if pressed_keys[pygame.K_LEFT] or pressed_keys[pygame.K_a]:  # Flecha izquierda o 'A'
             self.rect.x -= self.speed
-        if pressed_keys[pygame.K_RIGHT]:
+        if pressed_keys[pygame.K_RIGHT] or pressed_keys[pygame.K_d]:  # Flecha derecha o 'D'
             self.rect.x += self.speed
-        if pressed_keys[pygame.K_UP]:
+        if pressed_keys[pygame.K_UP] or pressed_keys[pygame.K_w]:  # Flecha arriba o 'W'
             self.rect.y -= self.speed
-        if pressed_keys[pygame.K_DOWN]:
+        if pressed_keys[pygame.K_DOWN] or pressed_keys[pygame.K_s]:  # Flecha abajo o 'S'
             self.rect.y += self.speed
 
 # Clase para NPCs con movimiento "wandering" en el primer nivel
@@ -143,19 +145,41 @@ class PointOfInterest(pygame.sprite.Sprite):
 # Función para mostrar el menú
 def show_menu():
     screen.blit(menu_image, (0, 0))
-    title = fontTitle.render("Aventura en Arequipa", True, WHITE)
-    screen.blit(title, (150, 150))
 
-    start_button = pygame.Rect(250, 250, 300, 50)
-    quit_button = pygame.Rect(250, 320, 300, 50)
+    # Título
+    title = fontTitle.render("Aventura en Arequipa", True, (34, 139, 34))
+    title_rect = title.get_rect(center=(SCREEN_WIDTH // 2, 120))
+    rounded_rect = pygame.Rect(title_rect.left - 10, title_rect.top - 10, title_rect.width + 20,
+                               title_rect.height + 20)  # Ajusta el tamaño según necesites
+    border_radius = 10
 
-    pygame.draw.rect(screen, GREEN, start_button)
-    pygame.draw.rect(screen, RED, quit_button)
+    # Dibujar el rectángulo redondeado con transparencia
+    pygame.draw.rect(screen, WHITE, rounded_rect, border_radius=border_radius)
 
+    # Dibujar el texto
+    screen.blit(title, title_rect)
+
+    # Definir botones
+    start_button = pygame.Rect(250, 250, 300, 60)
+    quit_button = pygame.Rect(250, 350, 300, 60)
+
+    # Dibujar botones con bordes redondeados
+    pygame.draw.rect(screen, (34, 139, 34), start_button, border_radius=15)  # Verde oscuro
+    pygame.draw.rect(screen, (178, 34, 34), quit_button, border_radius=15)   # Rojo oscuro
+
+    # Agregar borde a los botones
+    pygame.draw.rect(screen, WHITE, start_button, width=3, border_radius=15)
+    pygame.draw.rect(screen, WHITE, quit_button, width=3, border_radius=15)
+
+    # Texto de los botones
     start_text = font.render("Iniciar Juego", True, WHITE)
     quit_text = font.render("Salir", True, WHITE)
-    screen.blit(start_text, (start_button.x + 70, start_button.y + 10))
-    screen.blit(quit_text, (quit_button.x + 120, quit_button.y + 10))
+    start_text_rect = start_text.get_rect(center=start_button.center)
+    quit_text_rect = quit_text.get_rect(center=quit_button.center)
+
+    # Dibujar texto
+    screen.blit(start_text, start_text_rect)
+    screen.blit(quit_text, quit_text_rect)
 
     pygame.display.flip()
 
@@ -176,13 +200,27 @@ def show_menu():
 # Función para mostrar la pantalla de Game Over
 def game_over():
     screen.fill(BLACK)
-    game_over_text = fontTitle.render("Game Over", True, RED)
-    screen.blit(game_over_text, (250, 200))
 
-    restart_button = pygame.Rect(250, 300, 300, 50)
-    pygame.draw.rect(screen, GREEN, restart_button)
+    # Título de Game Over
+    game_over_text = fontTitle.render("Game Over", True, RED)
+    game_over_rect = game_over_text.get_rect(center=(SCREEN_WIDTH // 2, 150))
+    screen.blit(game_over_text, game_over_rect)
+
+    # Definir botón de reinicio
+    restart_button = pygame.Rect(250, 300, 300, 60)
+
+    # Dibujar botón con bordes redondeados
+    pygame.draw.rect(screen, (34, 139, 34), restart_button, border_radius=15)  # Verde oscuro
+
+    # Agregar borde al botón
+    pygame.draw.rect(screen, WHITE, restart_button, width=3, border_radius=15)
+
+    # Texto del botón
     restart_text = font.render("Volver al Inicio", True, WHITE)
-    screen.blit(restart_text, (restart_button.x + 60, restart_button.y + 10))
+    restart_text_rect = restart_text.get_rect(center=restart_button.center)
+
+    # Dibujar texto
+    screen.blit(restart_text, restart_text_rect)
 
     pygame.display.flip()
 
@@ -204,6 +242,7 @@ def puzzle(location):
     screen.blit(puzzle_text, (150, 250))
     pygame.display.flip()
     pygame.time.delay(3000)
+    game_over()
 
 # Función de segundo nivel
 def level_two():
@@ -251,7 +290,7 @@ def level_two():
             collected_object.kill()
             pickup_sound.play()
             objects_remaining -= 1
-
+    
         elapsed_time = (pygame.time.get_ticks() - start_time) / 1000
         remaining_time = max(0, 15 - int(elapsed_time))
 
